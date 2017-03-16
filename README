@@ -1,0 +1,18 @@
+Веб-сервис Битрикс Корпоративный Портал для публикации сообщений группы. Выгружает поля "Кому", "Теги"
+Расположен по адресу
+/bitrix/components/gallery/webservice.news
+
+Для подключения нужен файл gallery-news.php с содержимым
+<?
+require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
+$APPLICATION->SetTitle("Диагностика блогов");
+?>
+<?$APPLICATION->IncludeComponent(
+	"gallery:webservice.news",
+	"",
+Array()
+);?>
+<?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/footer.php");?>
+
+Чтобы убрать авторизацию Битрикс, на файл нужно выставить "Права на доступ продукта" 
+Все пользователи (в том числе неавторизованные) = Чтение
