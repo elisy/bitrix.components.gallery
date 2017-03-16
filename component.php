@@ -2,8 +2,6 @@
 if(!defined("B_PROLOG_INCLUDED") || B_PROLOG_INCLUDED!==true) die();
 if(!CModule::IncludeModule("webservice"))
 	return;
-if(!CModule::IncludeModule("statistic"))
-	return;
 if(!CModule::IncludeModule("blog"))
 	return;
 if(!CModule::IncludeModule("socialnetwork"))
