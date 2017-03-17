@@ -9,6 +9,26 @@ if(!CModule::IncludeModule("socialnetwork"))
 
 class CGalleryNewsWS extends IWebService
 {
+	function GetFile($fileId)
+	{
+		//$file = Bitrix\Disk\File::loadById(34588);
+		$file = CFile::GetFileArray($fileId);
+
+		$data = file_get_contents($_SERVER["DOCUMENT_ROOT"].$file["SRC"]);
+
+		return array(
+			"ID" => $file["ID"],
+			"TIMESTAMP_X" => $file["TIMESTAMP_X"],
+			"HEIGHT" => $file["HEIGHT"],
+			"WIDTH" => $file["WIDTH"],
+			"FILE_SIZE" => $file["FILE_SIZE"],
+			"CONTENT_TYPE" => $file["CONTENT_TYPE"],
+			"ORIGINAL_NAME" => $file["ORIGINAL_NAME"],
+			"CONTENT" => base64_encode($data),
+			//"CONTENT" => $_SERVER["DOCUMENT_ROOT"].$file["SRC"],
+		);
+	}
+
 	function GetNews($nTopCount)
 	{
 		$arResult = array();
@@ -18,6 +38,10 @@ class CGalleryNewsWS extends IWebService
 			"imageWidth" => $arParams["IMAGE_MAX_WIDTH"],
 			"imageHeight" => $arParams["IMAGE_MAX_HEIGHT"],
 		);
+
+
+		$userFieldManager = Bitrix\Disk\Driver::getInstance()->getUserFieldManager();
+		list($connectorClass, $moduleId) = $userFieldManager->getConnectorDataByEntityType('BLOG_POST');
 
 		$SORT = Array("DATE_PUBLISH" => "DESC", "NAME" => "ASC");
 		$arFilter = Array(
@@ -42,15 +66,14 @@ class CGalleryNewsWS extends IWebService
                             array("&amp;", "&lt;", "&gt;", "&quot;"),
                             $arPost["TITLE"]);
 
-			$arImages = Array();
-            $res = CBlogImage::GetList(array("ID"=>"ASC"),array("POST_ID"=>$arPost['ID'], "BLOG_ID"=>$arPost['BLOG_ID'], "IS_COMMENT" => "N"));
+			$attachments = Bitrix\Disk\AttachedObject::getModelList(array("filter" => array('=ENTITY_TYPE' => $connectorClass, 'ENTITY_ID' => array($arPost['ID']), '=MODULE_ID' => $moduleId), 'with' => array('OBJECT')));
 			$j = 0;
-			$arPost["IMAGES"] = array();
-            while ($arImage = $res->Fetch()) 
+			$arPost["ATTACHMENTS"] = array();
+            foreach ($attachments as $value)
 			{
 				$j++;
-				$arPost["IMAGES"][$j.':IMAGE'] = $arImage;
-            	$arImages[$arImage['ID']] = $arImage['FILE_ID'];
+				$arValue = array("OBJECT_ID" => $value->getObjectId(), "ID" => $value->getId(), "FILE_ID" => $value->getFile()->getFileId());
+				$arPost["ATTACHMENTS"][$j.':ATTACHMENT'] = $arValue;
 			}
 
 			$arPost["DETAIL_TEXT"] = "<![CDATA[".$arPost["DETAIL_TEXT"]."]]>";
@@ -123,19 +146,31 @@ class CGalleryNewsWS extends IWebService
 				"AUTHOR_NAME" => array("varType" => "string"),
 				"AUTHOR_LAST_NAME" => array("varType" => "string"),
 				"AUTHOR_SECOND_NAME" => array("varType" => "string"),
-				"IMAGES" => array("varType" => "ArrayOfImage", "arrType"=>"Image"),
+				"ATTACHMENTS" => array("varType" => "ArrayOfAttachment", "arrType"=>"Attachment"),
 				"DESTINATIONS" => array("varType" => "ArrayOfDestination", "arrType"=>"Destination"),
 			);
 
-		$wsdesc->structTypes["Image"] = Array(
+		$wsdesc->structTypes["Attachment"] = Array(
+			"OBJECT_ID"  => array("varType" => "string"),
 			"ID"  => array("varType" => "string"),
 			"FILE_ID"  => array("varType" => "string")
-			);
+		);
 
 		$wsdesc->structTypes["Destination"] = Array(
 			"ID"  => array("varType" => "string"),
 			"NAME"  => array("varType" => "string")
-			);
+		);
+
+		$wsdesc->structTypes["File"] = Array(
+			"ID"  => array("varType" => "string"),
+			"TIMESTAMP_X"  => array("varType" => "string"),
+			"HEIGHT"  => array("varType" => "integer"),
+			"WIDTH"  => array("varType" => "integer"),
+			"FILE_SIZE"  => array("varType" => "integer"),
+			"CONTENT_TYPE"  => array("varType" => "string"),
+			"CONTENT"  => array("varType" => "string"),
+			"ORIGINAL_NAME"  => array("varType" => "string"),
+		);
 
 		$wsdesc->classes = array(
 			"CGalleryNewsWS" => array(
@@ -147,6 +182,16 @@ class CGalleryNewsWS extends IWebService
 					),
 					"output"	=> array(
 						"posts" => array("varType" => "ArrayOfPost", "arrType"=>"Post", "strict" => "no")
+					),
+				),
+				"GetFile" => array(
+					"type"		=> "public",
+					"name"		=> "GetFile",
+					"input"		=> array(
+						"fileId" => array("varType" => "integer", "strict" => "no"),
+					),
+					"output"	=> array(
+						"content" => array("varType" => "File", "strict" => "no")
 					),
 				),
 			)
